@@ -53,6 +53,8 @@ columns_to_fill = df.columns[:5]
 medians = df[columns_to_fill].median()
 # Replace NaN values with medians
 df[columns_to_fill] = df[columns_to_fill].fillna(medians)
+df.info()
+print ("\n")
 
 #Now let's focus on the columns for each parameter, replacing the Nan with the median for each group
 #this means take a row consider the group of phq, find the nan and fill the median of these elements
@@ -74,32 +76,99 @@ column_ranges = [(5,14), (14, 21), (21, 29), (29, 42), (42, 54)]
 for start_idx, end_idx in column_ranges:
     df = df.apply(lambda row: replace_nans_with_median(row, start_idx, end_idx), axis=1)
 
-df.info()
-
-print('\n',df.to_string()) # I printed out all just to check was correct this algorithm
+print(df.to_string()) # I printed out all just to check was correct this algorithm
 
 
-#NOW LET'S COMPUTE THE SCORES ELIMINATING ALL OTHER COLUMNS
-for start, end in column_ranges:
-    # Create a name for the new column result of the sum
-    column_name = f'sum_{start+1}_{end}'
-    # Compute the sum of the elements in the interval of columns specified for each row
-    sums = df.iloc[:, start: end].sum(axis=1)
-    # Add the resulting column to dataframe
-    df[column_name] = sums
+#Before evaluating the scores we have to pay attention to responses to ccs questionnaire which were evaluated reversly.
+# The columns reverse scored are:
+columns_to_modify = ['ccs_3', 'ccs_6', 'ccs_7', 'ccs_12']
+# Create a dictionary to map values:
+values = {0: 6, 1: 5, 2: 4, 3: 3, 4: 2, 5: 1, 6: 0}
+# replace
+df[columns_to_modify] = df[columns_to_modify].replace(values)
 
-#The columns with the previous for have been added at the end of the dataframe so eliminating all the single paramters columns
-# the ones with scores they shift to correct position
+#NOW LET'S COMPUTE THE SCORES OF COLUMNS
+#FOR PHQ
+# Select the columns from which compute the score
+selected_columns = df.iloc[:, 5:14]
+# Define a function to compute the value for each row
+def calcola_valore_riga(row):
+    count_2 = (row >= 2).sum()  # Count values >=2
+    count_2_6_7 = (row.iloc[0:2] >= 2).sum()  # Count values >=2 in column 6 and column 7
+    if count_2 >= 5 and count_2_6_7 >= 1:
+        return 2
+    elif 2 <= count_2 <= 4 and count_2_6_7 >= 1:
+        return 1
+    else:
+        return 0
+# Apply the function to each row and have a new column
+df['phq_score_normalized'] = selected_columns.apply(calcola_valore_riga, axis=1)
+
+
+#FOR GAD
+#SUM ALL THE VALUES
+df['gad_score'] = df.iloc[:, 14: 22].sum(axis=1)
+df['heas_score'] = df.iloc[:, 22: 30].sum(axis=1)
+df['eheals_score'] = df.iloc[:, 30: 43].sum(axis=1)
+
+def assegna_valore(valore):
+    if 0 <= valore <= 4:
+        return 0
+    elif 5 <= valore <= 9:
+        return 1
+    elif 10 <= valore <= 14:
+        return 2
+    else:
+        return 3
+
+# Applicare la funzione alla colonna desiderata
+df['gad_score'] = df['gad_score'].apply(assegna_valore)
+
+def assegna_valore1(valore):
+    if 0 <= valore <= 12:
+        return 0
+    elif 13 <= valore <= 25:
+        return 1
+    else:
+        return 2
+
+
+# Applicare la funzione alla colonna desiderata
+df['heas_score'] = df['heas_score'].apply(assegna_valore1)
+
+#GLI E HEALS SONO VALUTATI AL CONTRARIO LE RISPOSTE PIU' BASSE INDICANO CHE NON SI HA LITERACY
+def assegna_valore2(valore):
+    if 0 <= valore <= 12:
+        return 0
+    elif 13 <= valore <= 25:
+        return 1
+    else:
+        return 2
+
+# Applicare la funzione alla colonna desiderata
+df['eheals_score'] = df['eheals_score'].apply(assegna_valore2)
+
+# FOR CCS
+# Create a new column with the mean of elements for column 43 to column 54 for each row of the dataframe
+#Per i ccs quanto più è alto il valore tanto più si è scettici
+df['ccs_score'] = df.iloc[:, 43:55].mean(axis=1)
+
+def assegna_valore3(valore):
+    if 0 <= valore <= 3:
+        return 0
+    else:
+        return 1
+
+# Applicare la funzione alla colonna desiderata
+df['ccs_score'] = df['ccs_score'].apply(assegna_valore3)
+
+
+#The score columns have been added at the end of the dataframe so if we eliminate all the single parameters columns
+# the ones with scores  shift to correct position
+df2 = df #il dataframe originale è salvato in df2
 df = df.drop(df.columns[5:54], axis=1)
 
-#DO UNA MIGLIORE DENOMINAZIONE ALLE COLONNE, NON SAPEVO FARLO DA DENTRO A QUEL CICLO FOR DI PRIMA QUANDO LE HO
-#CREATE
-new_name_columns = ['Sum_phq', 'Sum_gad', 'Sum_eheals', 'Sum_heals', 'Sum_ccs']
-# Rename the desired columns
-df = df.rename(columns={columnn: new_name for columnn, new_name in zip(df.columns[5:10], new_name_columns)})
-#Print the new dataframe changes
-print('\nNEW DATAFRAME\n',df.to_string())
-
+print(df.to_string())
 
 #D. Let's deal with outliers -> Find the outliers in the columns
 def find_outliers_iqr(column):
@@ -124,19 +193,14 @@ for column_name in df.columns:
 # Print outliers for columns that have outliers
 for column_name, outliers in outliers_list:
     print("\nOutliers in column {}: \n{}".format(column_name, outliers)) #I visualize it below + also graphically
-    # Creare a subplot of 2 graphs
-    plt.figure(figsize=(12, 5))  # Set dimension of the figure
-    # 1st subplot is the boxplot to visualize the outliers
-    plt.subplot(1, 2, 1)
+    plt.figure(figsize=(6, 4))  # Adjust figsize as needed
     df.boxplot(column=column_name) #boxplot to visualize outliers
     plt.title(f'Box Plot for {column_name}')
-    # 2nd subplot is instead the histogram and distibution to understand why we obtained that value
-    plt.subplot(1, 2, 2)
+    plt.figure(figsize=(6, 4))
     sns.histplot(data=df, x=column_name, kde=True, color='skyblue', bins=50) #histplot to see distribution
     plt.title(f'Histplot for {column_name}')
-    # Show the subplot
-    plt.tight_layout()
     plt.show()
+
 
 #let's have  also an overview of all scores
 # Create a subplot of 5 graphs so to see the 5 scores
@@ -151,8 +215,8 @@ plt.show()
 
 
 # STEP .3 EXPLORATORY DATA ANALYSIS
+
 #We have to understand previously the columns to take into account if all or just the ones we are interested in
 #As regards the distinction between numerical and categorical data we have to understand which correlation
 #analysis to do ...
-
 
