@@ -42,19 +42,25 @@ print ("\n")
 # cluster but not for that step so not
 # E.4 the one on forward and backward fill I do not consider the best
 
-# E.5 Let's try with IMPUTATION replacing with the median the Nan values
-#In particular the strategy is to replace for columns only for the social values, while the scores will be treated
-#for rows
+#E.5 Let's try with IMPUTATION replacing with the median the Nan values apart from
+# the categorical nominal variables where replace with the mode
+# In our dataset the categorical nominal variables are the gender, the civil status
+# In detail, the strategy is to replace for columns only for the social values,
+# while the scores will be treated for rows
 
 #Let's do for social values
-# Select the first 5 columns
-columns_to_fill = df.columns[:5]
-# Calculate the median for each column
-medians = df[columns_to_fill].median()
-# Replace NaN values with medians
-df[columns_to_fill] = df[columns_to_fill].fillna(medians)
+# Replace NaN values with the mode for the categorical nominal columns
+mode_cols = ['gender', 'marital']
+for col in mode_cols:
+    mode_value = df[col].mode().values[0]
+    df[col].fillna(mode_value, inplace=True)
+# Replace NaN values with the median for the other social columns
+median_cols = ['age', 'education', 'income']
+for col in median_cols:
+    median_value = df[col].median()
+    df[col].fillna(median_value, inplace=True)
 df.info()
-print ("\n")
+print("\n")
 
 #Now let's focus on the columns for each parameter, replacing the Nan with the median for each group
 #this means take a row consider the group of phq, find the nan and fill the median of these elements
@@ -78,6 +84,9 @@ for start_idx, end_idx in column_ranges:
 
 print(df.to_string()) # I printed out all just to check was correct this algorithm
 
+#The first step of our analysis is to discriminate which is the problem of our population
+#so understand which problem to treat, if phq,gad,heas,eheals or ccs to do so we sum all scores of each
+# and analize which are the problems mostly evident in out population
 
 #Before evaluating the scores we have to pay attention to responses to ccs questionnaire which were evaluated reversly.
 # The columns reverse scored are:
@@ -105,101 +114,99 @@ def calcola_valore_riga(row):
 df['phq_score_normalized'] = selected_columns.apply(calcola_valore_riga, axis=1)
 
 
-#FOR GAD
-#SUM ALL THE VALUES
+#FOR GAD, HEAS AND EHEALS -> SUM ALL THE VALUES
 df['gad_score'] = df.iloc[:, 14: 22].sum(axis=1)
 df['heas_score'] = df.iloc[:, 22: 30].sum(axis=1)
 df['eheals_score'] = df.iloc[:, 30: 43].sum(axis=1)
 
-def assegna_valore(valore):
-    if 0 <= valore <= 4:
+#A regards GAD we define a coding
+
+def assign_value_gad(value):
+    if 0 <= value <= 4:
         return 0
-    elif 5 <= valore <= 9:
+    elif 5 <= value <= 9:
         return 1
-    elif 10 <= valore <= 14:
+    elif 10 <= value <= 14:
         return 2
     else:
         return 3
 
-# Applicare la funzione alla colonna desiderata
-df['gad_score'] = df['gad_score'].apply(assegna_valore)
+# Apply the function to desider column
+df['gad_score'] = df['gad_score'].apply(assign_value_gad)
 
-def assegna_valore1(valore):
-    if 0 <= valore <= 12:
+#As regards the eheals and heals the coding is another
+#and for both is the same since maximum score of eheals
+#while for heals is 39 so use the same subdivision
+#in 3 scales (eheals will just have a surplus element ut the subdivision is coherent)
+def assign_value(value):
+    if 0 <= value <= 12:
         return 0
-    elif 13 <= valore <= 25:
+    elif 13 <= value <= 25:
         return 1
     else:
         return 2
 
+# Apply the function to desired column
+df['heas_score'] = df['heas_score'].apply(assign_value)
+df['eheals_score'] = df['eheals_score'].apply(assign_value)
 
-# Applicare la funzione alla colonna desiderata
-df['heas_score'] = df['heas_score'].apply(assegna_valore1)
-
-#GLI E HEALS SONO VALUTATI AL CONTRARIO LE RISPOSTE PIU' BASSE INDICANO CHE NON SI HA LITERACY
-def assegna_valore2(valore):
-    if 0 <= valore <= 12:
-        return 0
-    elif 13 <= valore <= 25:
-        return 1
-    else:
-        return 2
-
-# Applicare la funzione alla colonna desiderata
-df['eheals_score'] = df['eheals_score'].apply(assegna_valore2)
 
 # FOR CCS
 # Create a new column with the mean of elements for column 43 to column 54 for each row of the dataframe
-#Per i ccs quanto più è alto il valore tanto più si è scettici
+#For ccs as much is higher much you are skeptic
 df['ccs_score'] = df.iloc[:, 43:55].mean(axis=1)
 
-def assegna_valore3(valore):
-    if 0 <= valore <= 3:
+def assign_value_ccs(value):
+    if 0 <= value <= 3:
         return 0
     else:
         return 1
 
-# Applicare la funzione alla colonna desiderata
-df['ccs_score'] = df['ccs_score'].apply(assegna_valore3)
+# Apply function to desired column
+df['ccs_score'] = df['ccs_score'].apply(assign_value_ccs)
 
 
-#The score columns have been added at the end of the dataframe so if we eliminate all the single parameters columns
-# the ones with scores  shift to correct position
-df2 = df #il dataframe originale è salvato in df2
-df = df.drop(df.columns[5:54], axis=1)
+#The score columns have been added at the end of the dataframe so if we eliminate all the single parameters
+# columns, the ones with scores will shift to correct position
+#Before deleting save a copy of the original dataframe
+df2 = df #the original dataframe is saved in df2
+df = df.drop(df.columns[5:54], axis=1) #drop columns
 
 print(df.to_string())
 
+#FOR THE OUTLIERS RESULTS WE HAVE NOT DECIDED WHAT TO DO
+#THE PROBLEM WE WERE TALKING ABOUT WAS OUTLIERS OF CATEGORICAL DATA
+#TO TREAT AS FREQUENCY ANALYSIS AND NOT IQR
+#WE WERE DECIDING IF TO DO  DIRECTLY IN THE CLUSTER
 #D. Let's deal with outliers -> Find the outliers in the columns
-def find_outliers_iqr(column):
-    Q1 = column.quantile(0.25)
-    Q3 = column.quantile(0.75)
-    IQR = Q3 - Q1
-    lower_bound = Q1 - 1.5 * IQR
-    upper_bound = Q3 + 1.5 * IQR
-    return column[(column < lower_bound) | (column > upper_bound)]
+#def find_outliers_iqr(column):
+    #Q1 = column.quantile(0.25)
+    #Q3 = column.quantile(0.75)
+    #IQR = Q3 - Q1
+    #lower_bound = Q1 - 1.5 * IQR
+    #upper_bound = Q3 + 1.5 * IQR
+    #return column[(column < lower_bound) | (column > upper_bound)]
 
 # Create a list to store outliers for each column
-outliers_list = []
+#outliers_list = []
 
 # Loop through each column and find outliers
-for column_name in df.columns:
-    outliers = find_outliers_iqr(df[column_name]) #call the previous function for each column in dataframe
-    # to find outliers
-    if not outliers.empty:  # Check if there are outliers
-        outliers_list.append((column_name, outliers)) #if there are we are in the loop and
+#for column_name in df.columns:
+    #outliers = find_outliers_iqr(df[column_name]) #call the previous function for each column in dataframe to find outliers
+    #if not outliers.empty:  # Check if there are outliers
+        #outliers_list.append((column_name, outliers)) #if there are we are in the loop and
         # create a list with the column and the respective outliers
 
 # Print outliers for columns that have outliers
-for column_name, outliers in outliers_list:
-    print("\nOutliers in column {}: \n{}".format(column_name, outliers)) #I visualize it below + also graphically
-    plt.figure(figsize=(6, 4))  # Adjust figsize as needed
-    df.boxplot(column=column_name) #boxplot to visualize outliers
-    plt.title(f'Box Plot for {column_name}')
-    plt.figure(figsize=(6, 4))
-    sns.histplot(data=df, x=column_name, kde=True, color='skyblue', bins=50) #histplot to see distribution
-    plt.title(f'Histplot for {column_name}')
-    plt.show()
+#for column_name, outliers in outliers_list:
+    #print("\nOutliers in column {}: \n{}".format(column_name, outliers)) #I visualize it below + also graphically
+    #plt.figure(figsize=(6, 4))  # Adjust figsize as needed
+    #df.boxplot(column=column_name) #boxplot to visualize outliers
+    #plt.title(f'Box Plot for {column_name}')
+    #plt.figure(figsize=(6, 4))
+    #sns.histplot(data=df, x=column_name, kde=True, color='skyblue', bins=50) #histplot to see distribution
+    #plt.title(f'Histplot for {column_name}')
+    #plt.show()
 
 
 #let's have  also an overview of all scores
@@ -213,19 +220,28 @@ for i, col in enumerate(df.columns[5:10]):
 plt.tight_layout()
 plt.show()
 
-
-df_gender=df.drop(columns = ['education', 'marital'])
-df_education=df.drop(columns = ['gender', 'marital'])
-df_marital=df.drop(columns = ['education', 'gender'])
-df_numerical=df.drop(columns = ['education','gender','marital'])
+#Now the objective is to analize the correlation between the social values with the scores
+#Fot the numerical variables we will use the heatmap to analize correlations
+#but for the categorical we will use pairplot
+#The strategy is to make a pair plot varying each categorical variabel
+#The categorical variables we have considered are: education, marital and gender
+#So we create new dataframes that will preserve only one categorical
+df_gender=df.drop(columns = ['education', 'marital']) #here is preserved the gender and dropped the other two
+df_education=df.drop(columns = ['gender', 'marital']) #here education
+df_marital=df.drop(columns = ['education', 'gender']) #here marital
+df_numerical=df.drop(columns = ['education','gender','marital']) #and here i delete all categoricals, so to make the heatmap only with numerical
 
 sns.pairplot(df_gender,hue='gender')
+plt.title("Gender pairplot")
 plt.show()
 sns.pairplot(df_education,hue='education')
+plt.title('education pairplot')
 plt.show()
 sns.pairplot(df_marital,hue='marital')
+plt.title('marital pairplot')
 plt.show()
 sns.heatmap(df_numerical.corr(), annot=True)
+plt.title('heatmap numerical variables')
 plt.show()
 
 # STEP .3 EXPLORATORY DATA ANALYSIS
