@@ -214,9 +214,22 @@ plt.tight_layout()
 plt.show()
 
 
+df_gender=df.drop(columns = ['education', 'marital'])
+df_education=df.drop(columns = ['gender', 'marital'])
+df_marital=df.drop(columns = ['education', 'gender'])
+df_numerical=df.drop(columns = ['education','gender','marital'])
+
+sns.pairplot(df_gender,hue='gender')
+plt.show()
+sns.pairplot(df_education,hue='education')
+plt.show()
+sns.pairplot(df_marital,hue='marital')
+plt.show()
+sns.heatmap(df_numerical.corr(), annot=True)
+plt.show()
+
 # STEP .3 EXPLORATORY DATA ANALYSIS
 
 #We have to understand previously the columns to take into account if all or just the ones we are interested in
 #As regards the distinction between numerical and categorical data we have to understand which correlation
 #analysis to do ...
-
