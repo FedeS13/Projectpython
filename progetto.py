@@ -2,6 +2,9 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
 
 #STEP 1: COLLECTION
 
@@ -37,6 +40,7 @@ df[columns_to_modify] = df[columns_to_modify].replace(values)
 # B. let's deal with duplicate rows
 df = df.drop_duplicates()
 df.info() #Printing we see that the number of rows goes from 160 to 150 so 10 duplicates dropped
+print(df.to_string())
 print("\n")
 
 
@@ -70,7 +74,7 @@ for column_name in columns_without_nominal:
         outliers_column.append(column_name) #this we will use in winsorizing
         outliers_list.append((column_name, outliers)) #if there are we are in the loop and
         # create a list with the column and the respective outliers
-
+''''
 # Print outliers for columns that have outliers
 for column_name, outliers in outliers_list:
     print("\nOutliers in column {}: \n{}".format(column_name, outliers)) #I visualize it below + also graphically
@@ -87,7 +91,7 @@ for column_name in nominal_cols:
     plt.title(f'Histogram for {column_name}')
     plt.xlabel(column_name)
     plt.ylabel('Frequency')
-    plt.show()
+    plt.show()'''
 
 #From the graphs obtained we will perform winsorizing,which means that data that are out of ranges
 #will assume lower and upper bound and so be no more outliers. This strategy is so not to lose all the other information
@@ -109,6 +113,8 @@ def winsorize_iqr(column):
 # Apply Winsorizing based on IQR to the columns identified as outliers stored in outliers_column
 for column in columns_without_nominal:
     df[column] = winsorize_iqr(df[column])
+
+print(df.to_string())
 
 # E. Let's deal with missing values;
 #Looking at slide 26 ppt.2 of Python there are several chances
@@ -276,15 +282,16 @@ plt.show()
 #So we create new dataframes that will preserve only one nominal
 df_gender = df_scores.drop(columns = 'marital') #here is preserved the gender and dropped the other
 df_marital = df_scores.drop(columns = 'gender') #here marital
+##Non c'è bisogno di fare df_numerical ma solo analysis
 df_numerical = df_scores.drop(['gender','marital'], axis=1) #and here i delete all nominals, so to make the heatmap only with numerical
 
 
-sns.pairplot(df_gender, hue='gender')
+'''sns.pairplot(df_gender, hue='gender')
 plt.show()
 sns.pairplot(df_marital, hue='marital')
 plt.show()
 sns.heatmap(df_numerical.corr(), annot=True)
-plt.show()
+plt.show()'''
 
 
 '''DOBBIAMO SCRIVERE QUESTI RISULTATI NELLA ANALYSIS'''
@@ -295,4 +302,78 @@ plt.show()
 '''HO PROVATO A CREARE IN REALTA' PRIMA UN NUOVO DATAFRAME QUANDO HO SOMMATO E AGGIUNTO GLI SCORES 
 # #COSI' DA MANTENERE QUELLO ORIGINALE MA MI STAMPAVA CMQ IL TUTTO STRANO QUINDI ELIMINO E FACCIO UNO STEP IN PIU'''
 df = df.drop(columns=column_name_scores,axis=1)
-print(df.to_string())
+print("\nQUA\n",df.to_string())
+
+#ONE-HOT-ENCODING
+
+df = df.reset_index(drop=True) #CON QUESTO COMANDO SISTEMO GLI INDICI DEL DATASET ALTRIMENTI NON SI TROVA CON LA CONCATENAZIONE DOPO
+
+# Assuming 'gender' and 'marital' are columns in your DataFrame
+df_only_numerical=df.drop(columns=nominal_cols,axis=1)
+df_only_categorical = df[['gender', 'marital']]
+print(df_only_categorical.to_string())
+print(df_only_numerical.to_string())
+
+encoder = OneHotEncoder(handle_unknown='ignore')
+
+# Reshape 'gender' and 'marital' columns
+gender_data = df.loc[:, 'gender'].values.reshape(-1, 1)
+marital_data = df.loc[:, 'marital'].values.reshape(-1, 1)
+
+encoder.fit(gender_data)
+dummy_gender = encoder.transform(gender_data).toarray()
+dummy_gender = pd.DataFrame(dummy_gender, columns=encoder.get_feature_names_out(['gender']))
+print(dummy_gender)
+
+encoder.fit(marital_data)
+dummy_marital = encoder.transform(marital_data).toarray()
+dummy_marital = pd.DataFrame(dummy_marital, columns=encoder.get_feature_names_out(['marital']))
+
+df_conc = pd.concat([dummy_gender,dummy_marital, df_only_numerical], axis=1)
+
+print(df_conc.to_string())
+
+#PCA
+
+scaler = StandardScaler(copy=False)
+scaler.fit(df_conc.astype(float))
+scaler.transform(df_conc.astype(float))
+df_scaled=pd.DataFrame(scaler.transform(df_conc.astype(float)))
+pca_1 = PCA()
+pca_1.fit(df_scaled)
+df_pca=pd.DataFrame(pca_1.transform(df_scaled))
+explained_variance = pd.DataFrame(pca_1.explained_variance_ratio_).transpose()
+ax=sns.barplot(data=explained_variance)
+plt.show()
+cum_explained_variance=np.cumsum(pca_1.explained_variance_ratio_)
+cum_explained_variance=pd.DataFrame(cum_explained_variance).transpose()
+mx=sns.barplot(data=cum_explained_variance)
+mx.axhline(0.75)
+plt.show()
+df_pca=df_pca[0:23]
+
+
+'''# Crea un DataFrame per le componenti principali
+# Varianza spiegata da ciascuna componente principale
+explained_variance = pca.explained_variance_ratio_
+print("Varianza spiegata:", explained_variance)
+# Analisi delle componenti principali
+print("Componenti principali:")
+print(pca.components_)
+
+
+explained_variance = pca.explained_variance_ratio_ 
+# Calcola la varianza spiegata cumulativa
+cumulative_variance = np.cumsum(explained_variance) 
+# Numero di componenti principali
+n_components = len(explained_variance) 
+# Crea un array con i numeri delle componenti (1, 2, 3, ..., n_components)
+components = np.arange(1, n_components + 1) # Crea il grafico della varianza spiegata
+plt.figure(figsize=(10, 5)) plt.bar(components, explained_variance, alpha=0.7, align='center', label='Varianza Spiegata') 
+plt.step(components, cumulative_variance, where='mid', label='Varianza Cumulativa') 
+plt.xlabel('Componenti Principali') 
+plt.ylabel('Varianza Spiegata') 
+plt.title('Grafico Varianza Spiegata e Cumulativa') 
+plt.legend(loc='best') 
+plt.grid() 
+plt.show()'''
