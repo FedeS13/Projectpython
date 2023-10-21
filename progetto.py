@@ -5,6 +5,11 @@ import seaborn as sns
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
+from sklearn_extra.cluster import KMedoids
+from sklearn.metrics import silhouette_samples, silhouette_score
+from scipy.cluster.hierarchy import dendrogram, linkage
+from mpl_toolkits.mplot3d import Axes3D
+
 
 #STEP 1: COLLECTION
 
@@ -309,14 +314,14 @@ print("\nQUA\n",df.to_string())
 df = df.reset_index(drop=True) #CON QUESTO COMANDO SISTEMO GLI INDICI DEL DATASET ALTRIMENTI NON SI TROVA CON LA CONCATENAZIONE DOPO
 
 # Assuming 'gender' and 'marital' are columns in your DataFrame
-df_only_numerical=df.drop(columns=nominal_cols,axis=1)
-df_only_categorical = df[['gender', 'marital']]
+df_only_numerical=df.drop(columns=nominal_cols,axis=1) #dataframe without gender and marital
+df_only_categorical = df[['gender', 'marital']] #dataframe only with gender and marital
 print(df_only_categorical.to_string())
 print(df_only_numerical.to_string())
 
-encoder = OneHotEncoder(handle_unknown='ignore')
+encoder = OneHotEncoder(handle_unknown='ignore') #create an object encoder
 
-# Reshape 'gender' and 'marital' columns
+# Reshape 'gender' and 'marital' columns to do encoding
 gender_data = df.loc[:, 'gender'].values.reshape(-1, 1)
 marital_data = df.loc[:, 'marital'].values.reshape(-1, 1)
 
@@ -329,51 +334,102 @@ encoder.fit(marital_data)
 dummy_marital = encoder.transform(marital_data).toarray()
 dummy_marital = pd.DataFrame(dummy_marital, columns=encoder.get_feature_names_out(['marital']))
 
-df_conc = pd.concat([dummy_gender,dummy_marital, df_only_numerical], axis=1)
+df_conc = pd.concat([dummy_gender,dummy_marital, df_only_numerical], axis=1) #new dataframe, with dummy of gender and marital (encoded) + the original with only the numericals
 
 print(df_conc.to_string())
 
-#PCA
 
+#standardize
 scaler = StandardScaler(copy=False)
 scaler.fit(df_conc.astype(float))
 scaler.transform(df_conc.astype(float))
-df_scaled=pd.DataFrame(scaler.transform(df_conc.astype(float)))
+df_scaled = pd.DataFrame(scaler.transform(df_conc.astype(float)))
+
+#PCA
 pca_1 = PCA()
 pca_1.fit(df_scaled)
-df_pca=pd.DataFrame(pca_1.transform(df_scaled))
+df_pca = pd.DataFrame(pca_1.transform(df_scaled))
 explained_variance = pd.DataFrame(pca_1.explained_variance_ratio_).transpose()
-ax=sns.barplot(data=explained_variance)
+ax = sns.barplot(data=explained_variance)
 plt.show()
-cum_explained_variance=np.cumsum(pca_1.explained_variance_ratio_)
-cum_explained_variance=pd.DataFrame(cum_explained_variance).transpose()
-mx=sns.barplot(data=cum_explained_variance)
+cum_explained_variance = np.cumsum(pca_1.explained_variance_ratio_)
+cum_explained_variance = pd.DataFrame(cum_explained_variance).transpose()
+mx = sns.barplot(data=cum_explained_variance)
 mx.axhline(0.75)
 plt.show()
-df_pca=df_pca[0:23]
+
+df_pca = df_pca.iloc[:,0:23]  #from the 0.75 seen in last plot threshold we selct the 1st 23 principal components
+
+print(df_pca.to_string())
+
+#K-medoids
+
+distortions = []  # Empty list
+silhouette_scores = []
+for i in range(1, 10):
+    max_iter = 0 if i <= 2 else 300  # Set max_iter to 0 for i <= 2, 300 otherwise #scelta questa strategia fissare max iter altrimenti facendo parte range da 1 e fissando maxiter=300 da warning che range deve partire da 2
+    km = KMedoids(n_clusters=i, metric='euclidean', method='pam', init='random', max_iter=max_iter, random_state=123)
+    km.fit(df_pca)
+    distortions.append(km.inertia_)
+
+for i in range(2, 10):
+    km = KMedoids(n_clusters=i, metric='euclidean', method='pam', init='random', max_iter=300,
+                      random_state=123)
+    y_km = km.fit_predict(df_pca)
+    silhouette_scores.append(silhouette_score(df_pca, y_km))
+
+plt.plot(range(1,10), distortions, marker='o')
+plt.xlabel('Number of clusters')
+plt.ylabel('Distortion')
+plt.show()
+
+plt.figure(figsize=(8, 6))
+plt.plot(range(2,10), silhouette_scores, marker='o')
+plt.title("Silhouette Score for KMedoids Clustering")
+plt.xlabel("Number of Clusters (k)")
+plt.ylabel("Silhouette Score")
+plt.grid(True)
+plt.show()
 
 
-'''# Crea un DataFrame per le componenti principali
-# Varianza spiegata da ciascuna componente principale
-explained_variance = pca.explained_variance_ratio_
-print("Varianza spiegata:", explained_variance)
-# Analisi delle componenti principali
-print("Componenti principali:")
-print(pca.components_)
+km = KMedoids(n_clusters=3, metric='euclidean', method='pam', init='random', max_iter=300, random_state=123)
+km.fit(df_pca)
+y_km=km.predict(df_pca)
+plt.scatter(df_pca.iloc[y_km==0,0],df_pca.iloc[y_km==0,1], s=50, c='green', marker='o')
+plt.scatter(df_pca.iloc[y_km==1,0],df_pca.iloc[y_km==1,1], s=50, c='orange', marker='+')
+plt.scatter(df_pca.iloc[y_km==2,0],df_pca.iloc[y_km==2,1], s=50, c='blue', marker='*')
+plt.scatter(km.cluster_centers_[:,0], km.cluster_centers_[:,1], s=250, c='red', marker='x', label='centroids')
+plt.legend()
+plt.grid()
+plt.show()
+
+# Create a 3D scatter plot
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+
+# Plot data points for each cluster in 3D
+ax.scatter(df_pca.iloc[y_km==0, 0], df_pca.iloc[y_km==0, 1], df_pca.iloc[y_km==0, 2], s=50, c='green', marker='o', label='Cluster 0')
+ax.scatter(df_pca.iloc[y_km==1, 0], df_pca.iloc[y_km==1, 1], df_pca.iloc[y_km==1, 2], s=50, c='orange', marker='+', label='Cluster 1')
+ax.scatter(df_pca.iloc[y_km==2, 0], df_pca.iloc[y_km==2, 1], df_pca.iloc[y_km==2, 2], s=50, c='blue', marker='*', label='Cluster 2')
+
+# Plot cluster centroids in 3D
+ax.scatter(km.cluster_centers_[:, 0], km.cluster_centers_[:, 1], km.cluster_centers_[:, 2], s=250, c='red', marker='x', label='Centroids')
+
+ax.set_xlabel('X-axis')
+ax.set_ylabel('Y-axis')
+ax.set_zlabel('Z-axis')
+
+plt.legend()
+plt.grid()
+plt.show()
+
+df_labeled=df
+df_labeled['Cluster']=y_km
+#df_labeled=pd.concat([df,pd.DataFrame(y_km)], axis=1)
+print(df_labeled.to_string())
 
 
-explained_variance = pca.explained_variance_ratio_ 
-# Calcola la varianza spiegata cumulativa
-cumulative_variance = np.cumsum(explained_variance) 
-# Numero di componenti principali
-n_components = len(explained_variance) 
-# Crea un array con i numeri delle componenti (1, 2, 3, ..., n_components)
-components = np.arange(1, n_components + 1) # Crea il grafico della varianza spiegata
-plt.figure(figsize=(10, 5)) plt.bar(components, explained_variance, alpha=0.7, align='center', label='Varianza Spiegata') 
-plt.step(components, cumulative_variance, where='mid', label='Varianza Cumulativa') 
-plt.xlabel('Componenti Principali') 
-plt.ylabel('Varianza Spiegata') 
-plt.title('Grafico Varianza Spiegata e Cumulativa') 
-plt.legend(loc='best') 
-plt.grid() 
-plt.show()'''
+
+
+
+
