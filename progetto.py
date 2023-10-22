@@ -260,6 +260,9 @@ df['ccs_score'] = df['ccs_score'].apply(assign_value_ccs) '''
 # That function provides summary statistics for all data belonging to numerical datatypes such as int or float.
 #The EDA is performed only on the dataset with the scores apart from single values of questionnaire that would be impossible
 df_scores = df.drop(columns=df.columns[5:54]) #I create this new dataframe df_score
+
+print('\n DF SCORE \n', df_scores.to_string())
+
 # We choose not to consider in this analysis the nominal variable for which the median or quartiles would not make sense
 df_analysis = df_scores.drop(nominal_cols, axis=1) #in this manner i define a new dataframe called df_analysis
 # so to drop all columns we do not want
@@ -423,10 +426,17 @@ plt.legend()
 plt.grid()
 plt.show()
 
+
+
 df_labeled=df
 df_labeled['Cluster']=y_km
-#df_labeled=pd.concat([df,pd.DataFrame(y_km)], axis=1)
 print(df_labeled.to_string())
+
+df_scores['Cluster']=y_km
+
+df_scores.to_csv(r'C:\Users\fmfm3\OneDrive\Documenti\Git\Projectpython\data.csv', header=True, index=True)
+
+
 
 
 
