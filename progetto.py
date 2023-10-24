@@ -10,6 +10,7 @@ from sklearn.metrics import silhouette_samples, silhouette_score
 from scipy.cluster.hierarchy import dendrogram, linkage
 from mpl_toolkits.mplot3d import Axes3D
 
+#--------------------------------------------------------------------------------------------------------------
 
 '''STEP 1: COLLECTION'''
 
@@ -21,7 +22,7 @@ df = pd.read_csv("dataset_project_eHealth20232024.csv")
 df.info()
 print("\n")
 
-
+#--------------------------------------------------------------------------------------------------------------
 
 '''STEP 2: CLEANING'''
 
@@ -194,11 +195,13 @@ for start_idx, end_idx in column_ranges_questions:
 
 print(df.to_string())# I printed out all to check this algorithm was correct
 
-#--------------
+#----------------------------------------------------------------------------------------------------------
 
+'''STEP 3 : EXPLORATORY DATA ANALYSIS'''
 
-# To simplify the Exploratory data Analysis given a row we sum all scores for each group and evaluate
-# the total score to each questionnaire
+# To simplify the Exploratory data Analysis
+# given a row we sum all scores for each group (phq, gad, eheals, heas, ccs)
+# and evaluate the total score to each questionnaire
 # Create the vector of the names of new columns of scores
 column_name_scores = ['phq_score', 'gad_score', 'eheals_score', 'heas_score', 'ccs_score']
 # Create new columns in the DataFrame with names from column_name_scores
@@ -277,14 +280,13 @@ def assign_value_ccs(value):
 # Apply function to desired column
 df['ccs_score'] = df['ccs_score'].apply(assign_value_ccs) '''
 
-#3. EXPLORATORY DATA ANALYSIS
 
-#MONOVARIATE
-#Firstly to do the EDA Univariate Analysis we use the function df.describe()
+'''MONOVARIATE EXPORATORY DATA ANALYSIS'''
+#Firstly  we use the function df.describe()
 # That function provides summary statistics for all data belonging to numerical datatypes such as int or float.
-# The EDA is performed only on the dataset with the scores apart from single values of questionnaire that would be impossible
+# The EDA is performed on the dataset with the scores apart from single values of questionnaire that would be impossible
 df_scores = df.drop(columns=df.columns[5:54]) #so I create this new dataframe df_score
-
+#that has only the social columns and the score columns
 print('\n DF SCORE \n', df_scores.to_string())
 
 # We choose not to consider in this analysis the nominal variable for which the median or quartiles would not make sense
@@ -293,7 +295,7 @@ df_analysis = df_scores.drop(nominal_cols, axis=1) #in this manner i define a ne
 print(df_analysis.describe().to_string())
 #Evaluations are on the report which takes the median, 25th and 75th percentiles and the maximum of the scores
 
-#let's have an overview of all scores
+#Let's have an overview of all scores
 # Create a subplot of 5 graphs so to see the 5 scores
 fig, axes = plt.subplots(nrows=1, ncols=5, figsize=(15, 5))
 # Design the histogram for the score columns of the dataframe
@@ -305,11 +307,14 @@ for i, col in enumerate(df_analysis.columns[3:8]):
 plt.tight_layout()
 plt.show()
 
+#also I create subplots in which visualize the histograms of the numerical social variables
 fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(15, 3))
 for i, col in enumerate(df_analysis.columns[0:3]):
     sns.histplot(data=df_analysis, x=col, ax=axes[i])
     axes[i].set_title(f'Histogram of {col}')
 plt.show()
+
+#The barplots for nominals have already been done in the outliers analysis
 
 
 #BI/MULTIVARIATE
@@ -329,28 +334,28 @@ plt.show()
 sns.pairplot(df_marital, hue='marital')
 plt.show()
 
-##For only the numericals, to analyse correlations between each numerical variable,
+##For the numericals, to analyse correlations between each numerical variable,
 # we have df_analysis already defined above
 sns.heatmap(df_analysis.corr(), annot=True)
 plt.show()
 
+#--------------------------------------------------------------------------------------------------------------
 
-'''DOBBIAMO SCRIVERE QUESTI RISULTATI NELLA ANALYSIS'''
+'4. DATA ANLYSIS'
 
-
-
-#3. DATA ANLYSIS
-
-#DATA PREPARATION
+'4.1 DATA PREPARATION'
 
 # Let's take again the original dataframe without the scores for this part
-df = df.drop(columns=column_name_scores,axis=1)
-print("\nQUA\n",df.to_string())
+df = df.drop(columns=column_name_scores,axis=1) #so drop the scores column i have added
+'''Avevo provato a fare un dataframe nuovo per il totale + scores ma non funziona bene il salvataggio'
+ 'quindi si tratta di una operazione in piu tecnicamente'''
 
 df = df.reset_index(drop=True) #With this command i reset the indexes of the datframe
-#when we dropped the duplicate rows the original indexes were maintained so for example if 153 was shifted the resulting dataframe
+#when we dropped the duplicate rows the original indexes were maintained
+# so for example if 153 was shifted the resulting dataframe
 # was still at 159 with 153 missing, in this way instead we rescale correctly the indexes from 0 to 149.
 #This is done otherwise we will have problems with nexts concatenations
+
 
 #For the nominal variables we have to perform the ONE HOT ENCODING
 
@@ -361,6 +366,10 @@ df_only_numerical=df.drop(columns=nominal_cols,axis=1) #dataframe without gender
 df_only_categorical = df[['gender', 'marital']] #dataframe only with gender and marital
 print(df_only_categorical.to_string())
 print(df_only_numerical.to_string())
+
+
+'''SU QUESTA PARTE CHI SA PIU' DI ME DI MACHINE LEARNING PUO' FARE QUALCHE COMMENTO PIU' ESPLICATIVO
+SE NECESSARIO'''
 
 encoder = OneHotEncoder(handle_unknown='ignore') #create an object encoder
 
@@ -416,32 +425,34 @@ plt.show()
 # components, but on the amount of variance explained
 # Reduced datasets should explain a percentage of variance from 70% to 90% of the original dataset.
 # We chose above the threshold of 75%
-#from the 0.75 seen in last plot threshold we select the 1st 23 principal components
-
+# from the 0.75 seen in last plot threshold we select the 1st 23 principal components
+# So
 df_pca = df_pca.iloc[:,0:23]
 print(df_pca.to_string())
 
-#CLUSTERING
+# 4.2 CLUSTERING
+
 #K-medoids
 
 #First of all we have to understand which is the number of clusters.
 # To do so we use the graphical and the analytical method.
 
-#Calculating the total within sum of square distances (inertia) for a varying number of clusters, it is possible to
-#graphically identify the elbow in the figure. The number of clusters where the elbow is found is the optimal number of clusters
-#to be used.
+#Calculating the total within sum of square distances (inertia) for a varying number of clusters,
+# it is possible to graphically identify the elbow in the figure.
+# The number of clusters where the elbow is found is the optimal number of clusters
+# to be used.
 distortions = []  # Empty list
 for i in range(1, 10):
     max_iter = 0 if i <= 2 else 300  # Set max_iter to 0 for i <= 2, 300 otherwise
-    #strategic choice to fix max iter otherwise fixing from rnange 1 without this row and max iter =300
+    #strategic choice to fix max iter otherwise fixing from range 1 without this row and max iter =300
     #wh have the warning that range has to start from 2
     km = KMedoids(n_clusters=i, metric='euclidean', method='pam', init='random', max_iter=max_iter, random_state=123)
     km.fit(df_pca)
     distortions.append(km.inertia_)
 
-#The average silhouette is a measure of how similar an object is to its cluster, compared to other clusters in the same partition.
-# The higher the value, the better. However, this information
-# has to be supported by other information (number of samples in each cluster, statistical difference between clusters).
+#The average silhouette is a measure of how similar an object is to its cluster,
+# compared to other clusters in the same partition.
+# The higher the value, the better.
 silhouette_scores = []
 for i in range(2, 10):
     km = KMedoids(n_clusters=i, metric='euclidean', method='pam', init='random', max_iter=300,
@@ -501,15 +512,16 @@ plt.grid()
 plt.show()
 
 #We define a new dataframe with the label obtained
-df_labeled=df #The new dataframe is given fro the original one
+df_labeled=df #The new dataframe is given from the original one
 df_labeled['Cluster']=y_km #and is added an additional column at the end which represents the clusters obtained
 print(df_labeled.to_string())
 
-#NEXT STEP IS TO PERFORM STATISTICAL ANALYSIS
-#In thsi case we choose to do it with a dataframe
+'4.2 STATISTICAL ANALYSIS'
+#In this case we choose to do it with a dataframe
 #that contains all social values , the resulting scores of the questionnaires and the cluster column obtained
 #As for the EDA we tought would not be effective to do it for each single result of the questionnaire
-#So we take again the dataframe with social columns and scores we used before and we add the cluster column
+#So we take again the dataframe with social columns and scores we used before (df_scores)
+# and we add the cluster column
 df_scores['Cluster']=y_km
 
 #We save this results on csv file so to open a new project and work fastly without waiting for the running of the code::
