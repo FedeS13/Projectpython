@@ -11,7 +11,7 @@ from scipy.cluster.hierarchy import dendrogram, linkage
 from mpl_toolkits.mplot3d import Axes3D
 
 
-#STEP 1: COLLECTION
+'''STEP 1: COLLECTION'''
 
 #we input ourdata to Python and make it a DataFrame that we can work on
 df = pd.read_csv("dataset_project_eHealth20232024.csv")
@@ -21,7 +21,9 @@ df = pd.read_csv("dataset_project_eHealth20232024.csv")
 df.info()
 print("\n")
 
-#STEP 2: CLEANING
+
+
+'''STEP 2: CLEANING'''
 
 #From slide 21 ppt.02 python
 #Common data problems:
@@ -42,16 +44,18 @@ values = {0: 6, 1: 5, 2: 4, 3: 3, 4: 2, 5: 1, 6: 0}
 # replace
 df[columns_to_modify] = df[columns_to_modify].replace(values)
 
-# B. let's deal with duplicate rows
+
+''' B. let's deal with duplicate rows'''
 df = df.drop_duplicates()
 df.info() #Printing we see that the number of rows goes from 160 to 150 so 10 duplicates dropped
 print(df.to_string())
 print("\n")
 
 
-#D. Let's deal with outliers -> Find the outliers in the columns
+'''D. Let's deal with outliers -> Find the outliers in the columns'''
 
-#We will distinguish between nominal variables for which we will do analysis through a bar plot
+#We will distinguish between :
+#nominal variables for which we will do analysis through a bar plot
 #from numerical and ordinal where do the IQR
 #For education and the scores, that are categorical ordinal, is common to treat them as numerical!
 
@@ -59,8 +63,10 @@ print("\n")
 nominal_cols = ['gender', 'marital'] #the categorical nominal that we will treat later
 
 # Calculate IQR and identify outliers for the remaining columns
+# define the remaining columns:
 columns_without_nominal = [col for col in df.columns if col not in nominal_cols]
 
+#Function to find the outliers for each column passed with IQR method
 def find_outliers_iqr(column):
     Q1 = column.quantile(0.25)
     Q3 = column.quantile(0.75)
@@ -68,24 +74,28 @@ def find_outliers_iqr(column):
     lower_bound = Q1 - 1.5 * IQR
     upper_bound = Q3 + 1.5 * IQR
     return column[(column < lower_bound) | (column > upper_bound)]
+#The function returns a subset of the column that includes only the values that are less than lower_bound
+# or greater than upper_bound.
+# These values are considered outliers according to the IQR method.
 
 # Create a list to store outliers for each column
 outliers_list = []
-#create also a list where to save columns name with outlier that will be useful for winsorizing
+# create also a list where to save columns name with outlier that will be useful for winsorizing
 outliers_column= []
 
-# Loop through each column and find outliers
+# Loop through all numerical columns to apply the function that finda outlier
 for column_name in columns_without_nominal:
     outliers = find_outliers_iqr(df[column_name]) #call the previous function for each column in dataframe to find outliers
-    if not outliers.empty:  # Check if there are outliers
-        outliers_column.append(column_name) #this we will use in winsorizing
-        outliers_list.append((column_name, outliers)) #if there are we are in the loop and
-        # create a list with the column and the respective outliers
+    if not outliers.empty:  #Since the for cicle goes for all columns, for the ones that the vector returned from the function is not empty
+        outliers_column.append(column_name) #save the column which has the outlier; this we will use in winsorizing
+        outliers_list.append((column_name, outliers)) #if there are we create a list whose elements are
+        #couples of variables containing the column that we found has the outlier and the respective outliers
 
 # Print outliers for columns that have outliers
 for column_name, outliers in outliers_list:
-    print("\nOutliers in column {}: \n{}".format(column_name, outliers)) #I print the column where I find them and which are
-    #Also I print them graphically with histograms to see distrubution
+    print("\nOutliers in column {}: \n{}".format(column_name, outliers)) #I print the column
+    # where I find them and which are; these are the couples saved in outliers_list at previous step
+    #Also I print them graphically with histograms
     plt.figure(figsize=(6, 4))
     sns.histplot(data=df, x=column_name, color='skyblue', bins=20)
     plt.title(f'Histogram for {column_name}')
@@ -100,10 +110,13 @@ for column_name in nominal_cols:
     plt.xlabel(column_name)
     plt.show()
 
-#From the graphs obtained we will perform winsorizing,which means that data that are out of ranges
-#will assume lower and upper bound and so be no more outliers. This strategy is so not to lose
+# From the graphs obtained we will perform winsorizing, which means that data that are outliers
+# will assume lower and upper bound and so be no more outliers. This strategy is so not to lose
 # all the other information about a candidate
 # (we do it only for numerical and ordinal, for nominal we saw not outliers)
+
+'''nOTA CHE LA FUNZIONE WINSORIZE IN REALTA' IN PARTE FA LE STESSE COSE DI  FIND_OUTLIERS MA NON SAPEVO
+COME SALVARE I DATI PER NON RIFARE LA STESSA COSA NE SE INCLUDERLA VISTO CHE E' UNO STEP DOPO?'''
 
 def winsorize_iqr(column):
     Q1 = column.quantile(0.25)
@@ -120,12 +133,13 @@ def winsorize_iqr(column):
     return column
 
 # Apply Winsorizing based on IQR to the columns identified as outliers stored in outliers_column
-for column in columns_without_nominal:
+for column in outliers_column:
     df[column] = winsorize_iqr(df[column])
 
 print(df.to_string())
 
-# E. Let's deal with missing values;
+
+'''# E. Let's deal with missing values;'''
 #Looking at slide 26 ppt.2 of Python there are several chances
 # E.1 the removal  is not the best option since we loose information on the other columns
 # -> WE TRIED TOGETHER AND WE SAW THAT THERE ARE 48 ROWS THAT HAVE AT LEAST A NaN ELEMENT SO REMOVE THEM 48/150
@@ -137,37 +151,37 @@ print(df.to_string())
 
 #E.5 Let's try with IMPUTATION replacing with the median the Nan values
 # apart for the categorical nominal variables where replace with the mode
-# In detail, the strategy is to replace for columns only for the social values,
-# while the scores will be treated for rows for each group if score
+# In detail, the strategy is to replace for the social values columns only make the analysis of the median along the column,
+# while the scores will be treated for rows for each group of score
+#so consider for the selected row the columns of the phq and replace the nan in one of the phq's with the
+#median amoong that phq's
 
-#Let's do for social values
+#Let's do for social values so analysis for columns
 # Replace NaN values with the mode for the categorical nominal columns
 for col in nominal_cols:
     mode_value = df[col].mode().values[0]
-    df[col].fillna(mode_value, inplace=True) #fill na is the function that fills Nan value , in this case with the mode computes
-# Replace NaN values with the median for the other social columns
+    df[col].fillna(mode_value, inplace=True) #fill na is the function that fills Nan value , in this case with the mode computed
+# Replace NaN values with the median for the numerical social columns
 numerical_social_cols = ['age', 'education', 'income']
 for col in numerical_social_cols:
-    median_value = df[col].median()
+    median_value = np.nanmedian(df[col]) #in the specified column computed the median among that elements without taking into consideration the nan
     median_value = round(median_value) #round the median otherwise we can obtain values not accetable like 13.5 to education which has no meaning in questionnaires
     df[col].fillna(median_value, inplace=True) #fill Nan with the median computes
 df.info() #check that the first 5 rows now have 150 non null values
 print("\n")
 
-#Now let's focus on the columns for each parameter, replacing the Nan with the median for each group
-#this means:
-# take a row consider the group of phq, find the nan and fill it with the median of these elements
-#do the same for the other groups
+#Now let's focus on the columns on each questionnaire
+# take a row consider for example the group of phq, find the nan and fill it with the median of these elements
+# do the same for the other groups gad, eheals, heas and ccs
 # and iterate for each row of the dataframe
 
 #Define a function to replace the Nan with the median:
 def replace_nans_with_median(row, start_idx, end_idx):
-    selected_values = row.iloc[start_idx:end_idx]  # Select columns in the specified interval
+    selected_values = row.iloc[start_idx:end_idx]  # for the row passed select columns in the specified interval
     median = np.nanmedian(selected_values)  # Compute the median excluding the Nan
-    for i in range(start_idx, end_idx):
-        if np.isnan(row.iloc[i]):
-            row.iloc[i] = round(median) #(the median is rounded so to avoid decimal numbers
-            #not admissible for the possible response to questionnaire)
+    for i in range(start_idx, end_idx): #loop for each column
+        if np.isnan(row.iloc[i]): #if in that column thare is a nan
+            row.iloc[i] = round(median) #replace it with the median computed again rounded as discussed before
     return row
 
 #Define the intervals of columns of each score
@@ -186,13 +200,14 @@ print(df.to_string())# I printed out all to check this algorithm was correct
 # To simplify the Exploratory data Analysis given a row we sum all scores for each group and evaluate
 # the total score to each questionnaire
 # Create the vector of the names of new columns of scores
-column_name_scores = ['phq_score', 'gad_score', 'heas_score', 'eheals_score', 'ccs_score']
+column_name_scores = ['phq_score', 'gad_score', 'eheals_score', 'heas_score', 'ccs_score']
 # Create new columns in the DataFrame with names from column_name_scores
 for i, (start, end) in enumerate(column_ranges_questions): #for cycle that runs for each group of columns (phq, gad .. as defined before)
-    new_column_name = column_name_scores[i]
+    new_column_name = column_name_scores[i] #give the new name of the column from the vector above defined
     selected_columns = df.iloc[:, start:end] #select the group of columns
-    df[new_column_name] = selected_columns.sum(axis=1) #sum all values along the same row for each row
-print(df.to_string())
+    df[new_column_name] = selected_columns.sum(axis=1) #sum all values in the selected colum along the same row
+    #and do it for each each row
+print(df.to_string()) #print the dataframe to which was added the columnss of scores
 
 '''In origine avevamo pensato di fare fede alle tabelle degli score o crearle per vedere se la popolazione era sana o no 
 ma questo approccio non andava bene. Le funzioni qui sotto erano le codifiche scelte per le valutazioni con i questionari. 

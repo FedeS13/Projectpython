@@ -1,6 +1,7 @@
 import pandas as pd
 from scipy.stats import chi2_contingency, kruskal, mannwhitneyu
 import statistics
+import numpy as np
 
 df_scores = pd.read_csv("data.csv")
 
@@ -27,7 +28,7 @@ p_index=0 #index 0 in which we will save the ones of marital; to index 1 we will
 # If p>0.05/n I accept H0 -> there are no differences -> so the nominal variabile does not discriminate among clusters
 #which means that we will not use it
 
-#Aplly chi square
+#Apply chi square
 chi2, p, _, _, = chi2_contingency(contingency_table_marital)
 p_values=p_values+[p]
 print(f"\nchi: { chi2} ,p : {p_values[p_index]}")
@@ -64,24 +65,30 @@ different(p_values[p_index],alpha_corrected)
 
 #Now let's focus on ordinary and quantitaive variable, so all other elements of our dataframe
 
-ordinal=['age', 'education', 'income', 'phq_score', 'gad_score', 'heas_score', 'eheals_score', 'ccs_score'] #these are the attributes column
+ordinal = ['age', 'education', 'income', 'phq_score', 'gad_score', 'eheals_score', 'heas_score', 'ccs_score'] #these are the attributes column
 #we are interested in examining
 
 #Let's do for each column KRUSKAL-WALLIS TEST and PAIRWISE MANN-WHITNEY U TESTS
 for att in ordinal:
     print(f'\n\n{att}:')
     cluster_0 = df_scores[df_scores['Cluster'] == 0 ][att] #we take only the elements of the attribute column selected from for cycle which have cluster =0
-    value_0= statistics.median(cluster_0)
-    value_0=round(value_0)
-    print(value_0)
+    value_0 = statistics.median(cluster_0)
+    value_0 = round(value_0)
+    q1 = np.percentile(cluster_0, 25)
+    q3 = np.percentile(cluster_0, 75)
+    print(value_0,q1,q3)
     cluster_1 = df_scores[df_scores['Cluster'] == 1 ][att] #same but the ones with have cluster =1
-    value_1= statistics.median(cluster_1)
-    value_1=round(value_1)
-    print(value_1)
+    value_1 = statistics.median(cluster_1)
+    value_1= round(value_1)
+    q1_1 = np.percentile(cluster_1, 25)
+    q3_1 = np.percentile(cluster_1, 75)
+    print(value_1,q1_1,q3_1)
     cluster_2 = df_scores[df_scores['Cluster'] == 2 ][att] # cluster =2
-    value_2= statistics.median(cluster_2)
-    value_2=round(value_2)
-    print(value_2)
+    value_2 = statistics.median(cluster_2)
+    value_2 = round(value_2)
+    q1_2 = np.percentile(cluster_2, 25)
+    q3_2 = np.percentile(cluster_2, 75)
+    print(value_2,q1_2,q3_2)
 
     ### KRUSKAL WALLIS
     print('\nKruskal Wallis:')
@@ -119,4 +126,9 @@ for att in ordinal:
 -> FROM TAURO REPORT '''
 # are the medians
 # so we find the median age for cluster 0 , 1 and 2  and so on with the other numerical variables
+
+#DOBBIAMO CREARE IL NUOVO DATAFRAME CHE CONTIENE SULLE RIGHE LE VARIABILI CHE DISCRIMINANO
+#E SULLE COLONNE I 3 CLUSTER
+#ALL'INTERNO PER I VALORI DEI NOMINALI LA MODA
+#PER TUTTI GLI ALTRI LE MEDIANE
 
