@@ -299,9 +299,10 @@ print(df_analysis.describe().to_string())
 # Create a subplot of 5 graphs so to see the 5 scores
 fig, axes = plt.subplots(nrows=1, ncols=5, figsize=(15, 5))
 # Design the histogram for the score columns of the dataframe
-bin_v = [27, 21, 40, 39, 72] #bins chosen according to each score to plot the histograms
+#bin_v = [27, 21, 40, 39, 72] #bins chosen according to each score to plot the histograms
+bin_rng = [(0,27), (0,21), (8,40), (0,39), (0,72)]
 for i, col in enumerate(df_analysis.columns[3:8]):
-    sns.histplot(data=df_analysis, x=col, ax=axes[i], bins=bin_v[i])
+    sns.histplot(data=df_analysis, x=col, ax=axes[i], binwidth=1, binrange=bin_rng[i]) #bins=bin_v[i]
     axes[i].set_title(f'Histogram of {col}')
 # Add spaces between graphs for better view and show
 plt.tight_layout()
