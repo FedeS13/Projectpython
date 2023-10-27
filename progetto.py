@@ -101,7 +101,6 @@ for column_name, outliers in outliers_list:
     sns.histplot(data=df, x=column_name, color='skyblue', bins=20)
     plt.title(f'Histogram for {column_name}')
     plt.xlabel(column_name)
-    plt.ylabel('Frequency')
     plt.show()
 
 #For the nominal columns excluded instead use the bar plots to understand if outliers
@@ -116,7 +115,7 @@ for column_name in nominal_cols:
 # all the other information about a candidate
 # (we do it only for numerical and ordinal, for nominal we saw not outliers)
 
-'''nOTA CHE LA FUNZIONE WINSORIZE IN REALTA' IN PARTE FA LE STESSE COSE DI  FIND_OUTLIERS MA NON SAPEVO
+'''NOTA CHE LA FUNZIONE WINSORIZE IN REALTA' IN PARTE FA LE STESSE COSE DI  FIND_OUTLIERS MA NON SAPEVO
 COME SALVARE I DATI PER NON RIFARE LA STESSA COSA NE SE INCLUDERLA VISTO CHE E' UNO STEP DOPO?'''
 
 def winsorize_iqr(column):
@@ -240,10 +239,11 @@ for i, col in enumerate(df_analysis.columns[3:8]):
 plt.tight_layout()
 plt.show()
 
+bin_wdt = [1, 1, 1000]
 #also I create subplots in which visualize the histograms of the numerical social variables
 fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(15, 3))
 for i, col in enumerate(df_analysis.columns[0:3]):
-    sns.histplot(data=df_analysis, x=col, ax=axes[i])
+    sns.histplot(data=df_analysis, x=col, ax=axes[i], binwidth=bin_wdt[i])
     axes[i].set_title(f'Histogram of {col}')
 plt.show()
 
@@ -270,6 +270,7 @@ plt.show()
 ##For the numericals, to analyse correlations between each numerical variable,
 # we have df_analysis already defined above
 sns.heatmap(df_analysis.corr(), annot=True)
+plt.title("Heatmap for correlations")
 plt.show()
 
 #--------------------------------------------------------------------------------------------------------------
@@ -403,7 +404,7 @@ for i in range(2, 10):
 
 plt.plot(range(1,10), distortions, marker='o')
 plt.xlabel('Number of clusters')
-plt.ylabel('Distortion')
+plt.ylabel('Inertia')
 plt.show()
 
 plt.figure(figsize=(8, 6))
