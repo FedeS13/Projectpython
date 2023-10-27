@@ -344,7 +344,6 @@ df_scaled = pd.DataFrame(scaler.transform(df_conc.astype(float)))
 
 pca_1 = PCA()
 pca_1.fit(df_scaled)
-print("\nCOMPONENTI")
 df_componenti= pd.DataFrame(pca_1.components_[0:23,:], columns=df_conc.columns)
 sns.heatmap(df_componenti, annot=False)
 plt.show()
@@ -386,7 +385,7 @@ for i in range(1, 10):
     max_iter = 0 if i <= 2 else 300  # Set max_iter to 0 for i <= 2, 300 otherwise
     #strategic choice to fix max iter otherwise fixing from range 1 without this row and max iter =300
     #wh have the warning that range has to start from 2
-    km = KMedoids(n_clusters=i, metric='euclidean', method='pam', init='random', max_iter=max_iter, random_state=123)
+    km = KMedoids(n_clusters=i, metric='euclidean', method='pam', init='random', max_iter=max_iter, random_state=42)
     km.fit(df_pca)
     distortions.append(km.inertia_)
 
@@ -396,7 +395,7 @@ for i in range(1, 10):
 silhouette_scores = []
 for i in range(2, 10):
     km = KMedoids(n_clusters=i, metric='euclidean', method='pam', init='random', max_iter=300,
-                      random_state=123)
+                      random_state=42)
     y_km = km.fit_predict(df_pca)
     silhouette_scores.append(silhouette_score(df_pca, y_km))
 
@@ -421,9 +420,10 @@ plt.show()
 
 #So we apply k-Medoids for 3 clusters:
 
-km = KMedoids(n_clusters=3, metric='euclidean', method='pam', init='k-medoids++', max_iter=300, random_state=42)
+km = KMedoids(n_clusters=3, metric='euclidean', method='pam', init='random', max_iter=300, random_state=42)
 #abbiamo fatto un controllo con un ciclo for per vedere che i medoidi che uscissero fossero corretti
-# e non cadessimo in un minimo locale!
+# e non cadessimo in un minimo locale! basta prima del km=KMedoids fare un ciclo for i in range (1,10)
+# e tutte le funzioni di seguito insieme con i grafici dentro questo ciclo for
 km.fit(df_pca)
 y_km= km.predict(df_pca)
 

@@ -10,6 +10,9 @@ df_scores = pd.read_csv("data.csv")
 n_cluster=3 #we found in last point
 alpha_corrected = 0.05/n_cluster #defined coefficient to perform bonferroni correction
 
+contingency_table_marital= pd.crosstab(df_scores['marital'],df_scores['Cluster'])
+print("\n\n",contingency_table_marital.to_string())
+
 #First of all examine nominal variables: marital and gender
 
 #We do Chi Square and not Fisher because Chi square is suitable only for (2x2) while for multiple variables is
