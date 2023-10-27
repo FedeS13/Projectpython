@@ -212,75 +212,6 @@ for i, (start, end) in enumerate(column_ranges_questions): #for cycle that runs 
     #and do it for each each row
 print(df.to_string()) #print the dataframe to which was added the columnss of scores
 
-'''In origine avevamo pensato di fare fede alle tabelle degli score o crearle per vedere se la popolazione era sana o no 
-ma questo approccio non andava bene. Le funzioni qui sotto erano le codifiche scelte per le valutazioni con i questionari. 
-Tra l'altro Tauro ci ha detto che per i gad e phq poteva andare bene perchè avevamo le tabelle ma poi per gli altri
-dovevamo tracciare la distribuzione della popolazione con le somme e stabilire eventualmente noi sulla base della popolazione 
-dei target. -> Sicomme non dobbiamo diagnosticare abbiamo scelto di evitarlo '''
-'''FOR PHQ
-# Select the columns from which compute the score
-selected_columns = df.iloc[:, 5:14]
-# Define a function to compute the value for each row
-def calcola_valore_riga(row):
-    count_2 = (row >= 2).sum()  # Count values >=2
-    count_2_6_7 = (row.iloc[0:2] >= 2).sum()  # Count values >=2 in column 6 and column 7
-    if count_2 >= 5 and count_2_6_7 >= 1:
-        return 2
-    elif 2 <= count_2 <= 4 and count_2_6_7 >= 1:
-        return 1
-    else:
-        return 0
-# Apply the function to each row and have a new column
-df['phq_score_normalized'] = selected_columns.apply(calcola_valore_riga, axis=1)
-
-df['gad_score'] = df.iloc[:, 14: 21].sum(axis=1)
-
-#A regards GAD we define a coding
-def assign_value_gad(value):
-    if 0 <= value <= 4:
-        return 0
-    elif 5 <= value <= 9:
-        return 1
-    elif 10 <= value <= 14:
-        return 2
-    else:
-        return 3
-# Apply the function to desider column
-df['gad_score'] = df['gad_score'].apply(assign_value_gad)
-
-
-df['heas_score'] = df.iloc[:, 21: 29].sum(axis=1)
-df['eheals_score'] = df.iloc[:, 29: 42].sum(axis=1)
-#As regards the eheals and heals the coding is another
-#and for both is the same since maximum score of eheals
-#while for heals is 39 so use the same subdivision
-#in 3 scales (eheals will just have a surplus element ut the subdivision is coherent)
-#def assign_value(value):
-    #if 0 <= value <= 12:
-        #return 0
-    #elif 13 <= value <= 25:
-        #return 1
-    #else:
-        #return 2
-
-# Apply the function to desired column
-df['heas_score'] = df['heas_score'].apply(assign_value)
-df['eheals_score'] = df['eheals_score'].apply(assign_value) 
-
-
-# FOR CCS
-# Create a new column with the mean of elements for column 43 to column 54 for each row of the dataframe
-#For ccs as much is higher much you are skeptic
-df['ccs_score'] = df.iloc[:, 43:55].mean(axis=1)
-def assign_value_ccs(value):
-    if 0 <= value <= 3:
-        return 0
-    else:
-        return 1
-# Apply function to desired column
-df['ccs_score'] = df['ccs_score'].apply(assign_value_ccs) '''
-
-
 '''MONOVARIATE EXPORATORY DATA ANALYSIS'''
 #Firstly  we use the function df.describe()
 # That function provides summary statistics for all data belonging to numerical datatypes such as int or float.
@@ -296,6 +227,7 @@ print(df_analysis.describe().to_string())
 #Evaluations are on the report which takes the median, 25th and 75th percentiles and the maximum of the scores
 
 #Let's have an overview of all scores
+
 # Create a subplot of 5 graphs so to see the 5 scores
 fig, axes = plt.subplots(nrows=1, ncols=5, figsize=(15, 5))
 # Design the histogram for the score columns of the dataframe
@@ -411,6 +343,10 @@ df_scaled = pd.DataFrame(scaler.transform(df_conc.astype(float)))
 
 pca_1 = PCA()
 pca_1.fit(df_scaled)
+print("\nCOMPONENTI")
+df_componenti= pd.DataFrame(pca_1.components_[0:23,:], columns=df_conc.columns)
+sns.heatmap(df_componenti, annot=False)
+plt.show()
 df_pca = pd.DataFrame(pca_1.transform(df_scaled))
 explained_variance = pd.DataFrame(pca_1.explained_variance_ratio_).transpose()
 ax = sns.barplot(data=explained_variance)
@@ -430,6 +366,8 @@ plt.show()
 # So
 df_pca = df_pca.iloc[:,0:23]
 print(df_pca.to_string())
+
+
 
 # 4.2 CLUSTERING
 
@@ -481,16 +419,19 @@ plt.show()
 #Since the difference between 2 and 3 of the silhouette is minimal we choose 3 clusters
 
 #So we apply k-Medoids for 3 clusters:
-km = KMedoids(n_clusters=3, metric='euclidean', method='pam', init='random', max_iter=300, random_state=123)
+
+km = KMedoids(n_clusters=3, metric='euclidean', method='pam', init='k-medoids++', max_iter=300, random_state=42)
+#abbiamo fatto un controllo con un ciclo for per vedere che i medoidi che uscissero fossero corretti
+# e non cadessimo in un minimo locale!
 km.fit(df_pca)
-y_km=km.predict(df_pca)
+y_km= km.predict(df_pca)
 
 # Plot data points for each cluster
 plt.scatter(df_pca.iloc[y_km==0,0],df_pca.iloc[y_km==0,1], s=50, c='green', marker='o')
 plt.scatter(df_pca.iloc[y_km==1,0],df_pca.iloc[y_km==1,1], s=50, c='orange', marker='+')
 plt.scatter(df_pca.iloc[y_km==2,0],df_pca.iloc[y_km==2,1], s=50, c='blue', marker='*')
 # Plot cluster centroids
-plt.scatter(km.cluster_centers_[:,0], km.cluster_centers_[:,1], s=250, c='red', marker='x', label='centroids')
+plt.scatter(km.cluster_centers_[:,0], km.cluster_centers_[:,1], s=250, c='red', marker='x', label='Medoids')
 plt.legend()
 plt.grid()
 plt.show()
@@ -503,7 +444,7 @@ ax.scatter(df_pca.iloc[y_km==0, 0], df_pca.iloc[y_km==0, 1], df_pca.iloc[y_km==0
 ax.scatter(df_pca.iloc[y_km==1, 0], df_pca.iloc[y_km==1, 1], df_pca.iloc[y_km==1, 2], s=50, c='orange', marker='+', label='Cluster 1')
 ax.scatter(df_pca.iloc[y_km==2, 0], df_pca.iloc[y_km==2, 1], df_pca.iloc[y_km==2, 2], s=50, c='blue', marker='*', label='Cluster 2')
 # Plot cluster centroids in 3D
-ax.scatter(km.cluster_centers_[:, 0], km.cluster_centers_[:, 1], km.cluster_centers_[:, 2], s=250, c='red', marker='x', label='Centroids')
+ax.scatter(km.cluster_centers_[:, 0], km.cluster_centers_[:, 1], km.cluster_centers_[:, 2], s=250, c='red', marker='x', label='Medoids')
 ax.set_xlabel('X-axis')
 ax.set_ylabel('Y-axis')
 ax.set_zlabel('Z-axis')
