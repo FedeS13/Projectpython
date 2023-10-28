@@ -10,6 +10,9 @@ df_scores = pd.read_csv("data.csv")
 n_cluster=3 #we found in last point
 alpha_corrected = 0.05/n_cluster #defined coefficient to perform bonferroni correction
 
+contingency_table_marital= pd.crosstab(df_scores['marital'],df_scores['Cluster'])
+print("\n\n",contingency_table_marital.to_string())
+
 #First of all examine nominal variables: marital and gender
 
 #We do Chi Square and not Fisher because Chi square is suitable only for (2x2) while for multiple variables is
@@ -21,19 +24,12 @@ alpha_corrected = 0.05/n_cluster #defined coefficient to perform bonferroni corr
 # If p>0.05/n I accept H0 -> there are the same -> so the nominal variable does not discriminate among
 # clusters, which means that we will not use it
 
-#Let's create the contingency table for marital with clusters
-contingency_table_marital= pd.crosstab(df_scores['marital'],df_scores['Cluster'])
-print(contingency_table_marital.to_string())
 
 #We will save the values of p in the vector p_values if it would be useful for results to write in the report ->
 '''WE WILL SEEE IT'''
 p_values=[]
 p_index=0 #index 0 in which we will save the ones of marital; to index 1 we will save the ones of gender
 
-#Apply chi square
-chi2, p, _, _, = chi2_contingency(contingency_table_marital)
-p_values=p_values+[p]
-print(f"\nchi: { chi2} ,p : {p_values[p_index]}")
 
 #Define a function that computes the result of chi square
 def different(p_value,alpha):
@@ -42,24 +38,52 @@ def different(p_value,alpha):
     else:
         print(f'There ARE NOT difference p_value: { p_value} > alpha: {alpha})')
 
-different(p_values[p_index],alpha_corrected)
 
 '''Values are reported as median (25th-75th) for continuous variable, % for binary variables, and mode for nominal variables!!!
 -> FROM TAURO REPORT TO DO ON OUR TO CREATE TABLE AT PAGE 16 OF PPT3'''
 #Since this is a nominal -> we evaluate the frequency from the contingency table
-# we have single for cluster 0 (28), married for cluster 1 (24), and also for cluster 2 (31)
 
-#Let's do the same for gender
-p_index +=1
+#Let's do for gender
 
 contingency_table_gender= pd.crosstab(df_scores['gender'],df_scores['Cluster'])
 print("\n\n",contingency_table_gender.to_string())
 
 chi2, p, _, _, = chi2_contingency(contingency_table_gender)
 p_values=p_values+[p]
-print(f"\nchi: { chi2} ,p : {p_values[p_index]}")
+print(f"\n0_1\nchi: { chi2} ,p : {p_values[p_index]}")
+different(p_values[p_index],0.05)
 
+
+contingency_subtable_gender_0_1= contingency_table_gender.iloc[:,[0,1]]
+print(contingency_subtable_gender_0_1)
+
+p_index +=1
+
+chi2, p, _, _, = chi2_contingency(contingency_subtable_gender_0_1)
+p_values=p_values+[p]
+print(f"\nchi: { chi2} ,p : {p_values[p_index]}")
 different(p_values[p_index],alpha_corrected)
+
+contingency_subtable_gender_0_2= contingency_table_gender.iloc[:,[0,2]]
+print(contingency_subtable_gender_0_2)
+
+p_index +=1
+
+chi2, p, _, _, = chi2_contingency(contingency_subtable_gender_0_2)
+p_values=p_values+[p]
+print(f"\nchi: { chi2} ,p : {p_values[p_index]}")
+different(p_values[p_index],alpha_corrected)
+
+contingency_subtable_gender_1_2= contingency_table_gender.iloc[:,[1,2]]
+print(contingency_subtable_gender_1_2)
+
+p_index +=1
+
+chi2, p, _, _, = chi2_contingency(contingency_subtable_gender_1_2)
+p_values=p_values+[p]
+print(f"\nchi: { chi2} ,p : {p_values[p_index]}")
+different(p_values[p_index],alpha_corrected)
+
 #For example in this case we find that it doesn't discriminate which corresponds to the results we gained with EDA
 
 
