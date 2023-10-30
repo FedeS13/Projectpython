@@ -2,7 +2,7 @@
 setwd("/Users/samueleravazzani/Library/Mobile Documents/com~apple~CloudDocs/Politecnico di Milano/2 anno M/1 semestre/E-health Methods and Applications/Project/Projectpython")
 
 # Create your contingency table (replace with your actual data)
-data <- matrix(c(28,0,3,10,24,31,7,13,6,0,5,3,0,8,0,6,2,4), nrow = 6, byrow = TRUE)
+data <- matrix(c(28,0,3,10,24,31,7,13,6,0,5,3,0,8,0,6,2,4), nrow = 6)
 print(data)
 
 # Perform Fisher's exact test

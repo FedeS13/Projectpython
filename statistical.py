@@ -50,7 +50,7 @@ print("\n\n",contingency_table_gender.to_string())
 
 chi2, p, _, _, = chi2_contingency(contingency_table_gender)
 p_values=p_values+[p]
-print(f"\n0_1\nchi: { chi2} ,p : {p_values[p_index]}")
+print(f"\nchi: { chi2} ,p : {p_values[p_index]}")
 different(p_values[p_index],0.05)
 
 
